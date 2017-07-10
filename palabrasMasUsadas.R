@@ -15,6 +15,7 @@ topLlaryora <- postsLlaryora %>%
   select(from_name, message) %>%
   unnest_tokens(palabra, message) %>%
   filter(!(palabra %in% stopWords)) %>%
+  filter(!(is.na(palabra))) %>%
   count(palabra, sort = TRUE) %>%
   head(topN)
 
@@ -22,6 +23,7 @@ topBaldassi <- postsBaldassi %>%
   select(from_name, message) %>%
   unnest_tokens(palabra, message) %>%
   filter(!(palabra %in% stopWords)) %>%
+  filter(!(is.na(palabra))) %>%
   count(palabra, sort = TRUE) %>%
   head(topN)
 

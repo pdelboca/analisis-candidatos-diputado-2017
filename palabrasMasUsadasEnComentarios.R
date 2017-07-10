@@ -15,6 +15,7 @@ topLlaryora <- commentsLlaryora %>%
   select(message) %>%
   unnest_tokens(palabra, message) %>%
   filter(!(palabra %in% stopWords)) %>%
+  filter(!(is.na(palabra))) %>%
   mutate(palabra=replace(palabra, palabra == "martin", "martín")) %>%
   mutate(palabra=replace(palabra, palabra == "amen", "amén")) %>%
   count(palabra, sort = TRUE) %>%
@@ -32,6 +33,7 @@ topOliviero <- commentsOliviero %>%
   select(message) %>%
   unnest_tokens(palabra, message) %>%
   filter(!(palabra %in% stopWords)) %>%
+  filter(!(is.na(palabra))) %>%
   mutate(palabra=replace(palabra, palabra == "lili", "liliana")) %>%
   count(palabra, sort = TRUE) %>%
   head(topN)
