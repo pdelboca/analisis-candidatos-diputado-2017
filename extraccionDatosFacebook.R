@@ -2,7 +2,7 @@
 library(Rfacebook)
 
 # Token temporal que caduca cada 1 hora. TODO: Automatizar token
-fbToken <- "EAACEdEose0cBAAsIQmF5lokY8yTgtf7kkwNu4GMXJgn2pIGdQfnVxUSMZASmgI70h41xBRQLVQ5HWZAX5T19cZAp6wrr86sjApHYVmqqpGHUZB565VvqwEZBgkrJLPRzUMPYXDbLlcjyymIuprbIZA8JlgZBu0mB8WnrIUtr5qSjiEvJgQ9OgA63Ckp6XPcCrAZD"
+fbToken <- "EAACEdEose0cBAAoPnRTJJ1CZB6uoZBRE46Fl6ZBDVTdUoc427ZBFAQ677QIUZAycBA5Fm2Ua9OD4ZAnjbCEPp2jvv6ZB8xzuG7x44ZCx5ZBrg8EyFTspUMZBb3qp3WO4DZBUCqzRl5t3idOpXgUDJQiStDsvew34DRX8xYTCeeZAZAbqzlZAKZANZAZCORxKwKRUmenFPyskZD"
 
 # idBaldassi <- "148528951956339"
 ExtraerDatosFacebook <- function(candidato, fbToken){
@@ -59,3 +59,7 @@ ExtraerDatosFacebook <- function(candidato, fbToken){
 ExtraerDatosFacebook("hectorbaldassi", fbToken)
 ExtraerDatosFacebook("martinllaryoraoficial", fbToken)
 ExtraerDatosFacebook("liliolivero", fbToken)
+ExtraerDatosFacebook("pablocarrook", fbToken)
+ExtraerDatosFacebook("eduardofernandez2017", fbToken)
+ExtraerDatosFacebook("253898394637965", fbToken)
+ExtraerDatosFacebook("dantevrossi", fbToken)
