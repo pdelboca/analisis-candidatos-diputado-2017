@@ -2,15 +2,15 @@ library(shiny)
 library(dplyr)
 library(ggplot2)
 library(tidytext)
+library(purrr)
+library(readr)
 
 # Carga de datos Global: Esto corre una vez al iniciar la aplicacion
 CargarDatos <- function(){
-  postsLlaryora <- readr::read_csv("./data/martinllaryoraoficial/posts.csv")
-  postsBaldassi <- readr::read_csv("./data/hectorbaldassi/posts.csv")
-  postsOliviero <- readr::read_csv("./data/liliolivero//posts.csv")
-  
-  bind_rows(postsBaldassi, postsLlaryora, postsOliviero) %>%
-    select(from_name, created_time, likes_count, message)
+  data <- dir(".", pattern = "posts.csv", recursive = TRUE) %>%
+    map(read_csv) %>%
+    reduce(rbind)
+  data
 }
 
 datosCandidatos <- CargarDatos()
