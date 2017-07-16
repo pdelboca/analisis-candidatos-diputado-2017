@@ -2,48 +2,40 @@
 library(Rfacebook)
 
 # Token temporal que caduca cada 1 hora. TODO: Automatizar token
-fbToken <- "EAACEdEose0cBAAoPnRTJJ1CZB6uoZBRE46Fl6ZBDVTdUoc427ZBFAQ677QIUZAycBA5Fm2Ua9OD4ZAnjbCEPp2jvv6ZB8xzuG7x44ZCx5ZBrg8EyFTspUMZBb3qp3WO4DZBUCqzRl5t3idOpXgUDJQiStDsvew34DRX8xYTCeeZAZAbqzlZAKZANZAZCORxKwKRUmenFPyskZD"
+fbToken <- "EAACEdEose0cBAOyFoWvxuCnFPxAT3FjxX7FJrALiIFTAV3zN77ZBqhLdxQgmNLKKZBw7q8rAa8dieuKJhaLZA57sMBgT6ZAjJqe6A9ZCARqXHNLaDle9HLQ4zhYB2PQnTQDoLrQDeFk7YItelmGkcYpDAXnnAlKZCsGQlZAZB8Err8HWopFdlDEN3Ph5xHGXa3EZD"
 
-# idBaldassi <- "148528951956339"
+# Funcion para extraer comments, likes y posts de la lista que traer getPost.
+ExtraerElementos <- function(index, listaPosts, elemento){
+  tmpData <- as.data.frame(listaPosts[index][[1]][elemento])
+  colnames(tmpData) <- str_split_fixed(colnames(tmpData),"\\.",2)[,2]
+  
+  if(nrow(tmpData) > 0){
+    # Trazabilidad al post_id en post, comment, likes
+    tmpData$post_id <- listaPosts[index][[1]]$post$id  
+  }
+  tmpData
+}
+
+# Funcion para Extraer Datos de Facebook
 ExtraerDatosFacebook <- function(candidato, fbToken){
   print(sprintf("Extrayendo datos candidato: %s", candidato))
   paginaCandidato <- getPage(candidato, token = fbToken, n=5000, since = '2015/06/01')
   
-  # Empezando el loop de descarga de comentarios
-  # obtengo el primero para armar estructura de datasets
-  print(sprintf("Extrayendo comentarios candidato: %s", candidato))
-  postId <- paginaCandidato$id[1]
-  primerComentario <- getPost(post = postId, token = fbToken)
-  posts <- primerComentario[["post"]]
-  likes <- primerComentario[["likes"]]
-  if(nrow(likes) > 0){
-    likes$post_id <- postId 
-  }
-  comments <- primerComentario[["comments"]]
+  print("Ejecutando getPosts")
+  paginaCandidato$id %>% 
+    map(~ getPost(., token=fbToken)) -> tmpPosts
   
-  # Recorro restantes anexando informacion
-  for (i in 2:nrow(paginaCandidato)) {
-    postId <- paginaCandidato$id[i]
-    comentario <- getPost(post = postId, token = fbToken)
-    
-    posts <- rbind(posts, comentario[["post"]])
-    
-    tmpLikes <- comentario[["likes"]]
-    if(!is.null(tmpLikes )){
-      tmpLikes$post_id <- postId 
-    }
-    likes <- rbind(likes, tmpLikes)
-    
-    comments <- rbind(comments, comentario[["comments"]])
-    if(i %% 25 == 0){
-      print(sprintf("Post %i de %i", i, nrow(paginaCandidato)))
-      }
-    
-  }
+  print("Extrayendo Posts")
+  seq_along(tmpPosts) %>%
+    map_df(~ ExtraerElementos(.,tmpPosts, "post")) -> posts
   
-  comments$post_number <- stringr::str_split_fixed(comments$id, "_",2)[,2]
-  likes$post_number <- stringr::str_split_fixed(likes$post_id, "_",2)[,2]
-  posts$post_number <- stringr::str_split_fixed(posts$id, "_",2)[,2]
+  print("Extrayendo Comments")
+  seq_along(tmpPosts) %>%
+    map_df(~ ExtraerElementos(.,tmpPosts, "comments")) -> comments
+  
+  print("Extrayendo Likes")
+  seq_along(tmpPosts) %>%
+    map_df(~ ExtraerElementos(.,tmpPosts, "likes")) -> likes
   
   # Escribir a csv
   # TODO: Crear carpetas con el script
@@ -61,5 +53,5 @@ ExtraerDatosFacebook("martinllaryoraoficial", fbToken)
 ExtraerDatosFacebook("liliolivero", fbToken)
 ExtraerDatosFacebook("pablocarrook", fbToken)
 ExtraerDatosFacebook("eduardofernandez2017", fbToken)
-ExtraerDatosFacebook("253898394637965", fbToken)
+ExtraerDatosFacebook("253898394637965", fbToken) # Luciana Echevarria
 ExtraerDatosFacebook("dantevrossi", fbToken)
