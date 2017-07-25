@@ -8,6 +8,7 @@ library(purrr)
 library(readr)
 library(lubridate)
 library(DT)
+library(RColorBrewer)
 
 # Carga de datos Global: Esto corre una vez al iniciar la aplicacion
 CargarDatos <- function(){
@@ -19,7 +20,7 @@ CargarDatos <- function(){
 
 datosCandidatos <- CargarDatos()
 stopWords <- scan("http://www.webmining.cl/wp-content/uploads/2011/03/stopwords.es.txt", character())
-stopWords <- c(stopWords, c("san", "<NA>"))
+stopWords <- c(stopWords, c("san", "<NA>","http"))
 
 ui <- dashboardPage(
   dashboardHeader(title = "Candidatos Córdoba 2017", titleWidth = 300),
@@ -109,14 +110,13 @@ server <- function(input, output) {
       filter(!(palabra %in% stopWords)) %>%
       filter(!(is.na(palabra))) %>%
       count(palabra, sort=TRUE) %>%
-      slice(1:12) %>%
+      slice(1:10) %>%
       mutate(ranking = row_number()) %>% 
       select(ranking, palabra)
   
-    tabla <- datatable(dat, options = list(dom = 't')) %>% 
+    tabla <- datatable(dat, options = list(dom = 't', pageLength = 10)) %>% 
       formatStyle(colnames(dat[-1]),
-                  backgroundColor = styleEqual(dat$palabra,
-                                               palette(rainbow(12)))
+                  backgroundColor = styleEqual(dat$palabra, brewer.pal(n = 10, name = "Set3"))
       )
     return(tabla)
   })
@@ -129,8 +129,7 @@ server <- function(input, output) {
       arrange(desc(likes_count)) %>%
       select(from_name, created_time, message, likes_count, comments_count, shares_count, linkHTML)
   },
-  options = list(lengthMenu = c(5, 10), pageLength = 5), escape = FALSE
-  )
+  options = list(lengthMenu = c(5, 10), pageLength = 5), escape = FALSE)
   
   # Tabla Evolucion de Palabras
   output$evolucionPalabrasCandidato <- renderDataTable({
@@ -141,7 +140,7 @@ server <- function(input, output) {
       filter(!(palabra %in% stopWords)) %>%
       filter(!(is.na(palabra))) %>%
       count(palabra, sort=TRUE) %>%
-      slice(1:12) %>%
+      slice(1:10) %>%
       mutate(ranking = row_number()) %>% 
       select(ranking, palabra)
     
@@ -160,10 +159,10 @@ server <- function(input, output) {
       select(mes, palabra, ranking) %>% 
       tidyr::spread(mes, palabra)
     
-    tabla <- datatable(dat) %>% 
+    tabla <- datatable(dat, options = list(dom = 't', pageLength = 15)) %>% 
       formatStyle(colnames(dat[-1]),
                   backgroundColor = styleEqual(principalesPalabras$palabra,
-                  palette(rainbow(12)))
+                  brewer.pal(n = 10, name = "Set3"))
                   )
     
     return(tabla)
