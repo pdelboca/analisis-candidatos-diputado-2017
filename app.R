@@ -6,7 +6,8 @@ library(ggplot2)
 library(tidytext)
 library(purrr)
 library(readr)
-
+library(lubridate)
+library(DT)
 
 # Carga de datos Global: Esto corre una vez al iniciar la aplicacion
 CargarDatos <- function(){
@@ -21,23 +22,39 @@ stopWords <- scan("http://www.webmining.cl/wp-content/uploads/2011/03/stopwords.
 stopWords <- c(stopWords, c("san", "<NA>"))
 
 ui <- dashboardPage(
-  dashboardHeader(title = "Candidatos Córdoba 2017"),
-  dashboardSidebar(disable = TRUE),
+  dashboardHeader(title = "Candidatos Córdoba 2017", titleWidth = 300),
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("Candidatos", tabName = "candidatos", icon = icon("users")),
+      menuItem("Discursos", tabName = "discurso", icon = icon("table"))
+    )
+  ),
   dashboardBody(
-    fluidRow(
-      box(dateRangeInput("inputFechas", label="Fechas Posts:" ,start=min(datosCandidatos$created_time), end=max(datosCandidatos$created_time)), width = 3),
-      valueBoxOutput("likesValueBox", width = 3),
-      valueBoxOutput("commentsValueBox", width = 3),
-      valueBoxOutput("sharesValueBox", width = 3)
-      
-    ),
-    fluidRow(
-      box(radioButtons(inputId = "candidato", "Canidato:", choices = unique(datosCandidatos$from_name)), width = 2),
-      box(plotOutput("likes"), width = 7, title = "Historial de Likes del Candidato"),
-      box(tableOutput("rankingPalabras"), width = 3, title = "Palabra mas Usada")
-    ),
-    fluidRow(
-      box(dataTableOutput("postsCandidato"), width = 12, title = "Post del Candidato")
+    tabItems(
+      tabItem(tabName = "candidatos",
+        fluidRow(
+          box(dateRangeInput("inputFechas", label="Fechas Posts:" ,start=min(datosCandidatos$created_time), end=max(datosCandidatos$created_time)), width = 3),
+          valueBoxOutput("likesValueBox", width = 3),
+          valueBoxOutput("commentsValueBox", width = 3),
+          valueBoxOutput("sharesValueBox", width = 3)
+        ),
+        fluidRow(
+          box(radioButtons(inputId = "candidato", "Canidato:", choices = unique(datosCandidatos$from_name)), width = 2),
+          box(plotOutput("likes"), width = 7, title = "Historial de Likes del Candidato"),
+          box(dataTableOutput("rankingPalabras"), width = 3, title = "Palabra mas Usada")
+        ),
+        fluidRow(
+          box(dataTableOutput("evolucionPalabrasCandidato"), width = 12, title = "Evolucion Palabras del Candidato (Por Cuatrimestre)")
+        ),
+        fluidRow(
+          box(dataTableOutput("postsCandidato"), width = 12, title = "Post del Candidato")
+        )
+      ),
+      tabItem(tabName = "discurso",
+        fluidRow(
+          box(tableOutput("tablaComparativaPalabras"), width = 12, title = "Palabras más usadas por los Candidatos")
+        )
+      )
     )
   )
 )
@@ -84,8 +101,8 @@ server <- function(input, output) {
   })
   
   # Tabla de Palabras
-  output$rankingPalabras <- renderTable({
-    datosCandidatos %>%
+  output$rankingPalabras <- renderDataTable({
+    dat <- datosCandidatos %>%
       filter(from_name == input$candidato) %>% 
       select(message) %>%
       unnest_tokens(palabra, message) %>%
@@ -95,8 +112,16 @@ server <- function(input, output) {
       slice(1:12) %>%
       mutate(ranking = row_number()) %>% 
       select(ranking, palabra)
+  
+    tabla <- datatable(dat, options = list(dom = 't')) %>% 
+      formatStyle(colnames(dat[-1]),
+                  backgroundColor = styleEqual(dat$palabra,
+                                               palette(rainbow(12)))
+      )
+    return(tabla)
   })
   
+  # Tabla Posts Candidato
   output$postsCandidato <- renderDataTable({
     datosCandidatos %>%
       filter(from_name == input$candidato) %>%
@@ -106,6 +131,59 @@ server <- function(input, output) {
   },
   options = list(lengthMenu = c(5, 10), pageLength = 5), escape = FALSE
   )
+  
+  # Tabla Evolucion de Palabras
+  output$evolucionPalabrasCandidato <- renderDataTable({
+    principalesPalabras <- datosCandidatos %>%
+      filter(from_name == input$candidato) %>% 
+      select(message) %>%
+      unnest_tokens(palabra, message) %>%
+      filter(!(palabra %in% stopWords)) %>%
+      filter(!(is.na(palabra))) %>%
+      count(palabra, sort=TRUE) %>%
+      slice(1:12) %>%
+      mutate(ranking = row_number()) %>% 
+      select(ranking, palabra)
+    
+    dat <- datosCandidatos %>%
+      filter(from_name == input$candidato) %>%
+      select(created_time, message) %>%
+      mutate(mes = quarter(created_time, with_year=TRUE)) %>%
+      unnest_tokens(palabra, message) %>%
+      filter(!(palabra %in% stopWords)) %>%
+      filter(!(is.na(palabra))) %>%
+      group_by(mes) %>%
+      count(palabra) %>%
+      arrange(mes, desc(n)) %>% 
+      slice(1:15) %>%
+      mutate(ranking = row_number()) %>%
+      select(mes, palabra, ranking) %>% 
+      tidyr::spread(mes, palabra)
+    
+    tabla <- datatable(dat) %>% 
+      formatStyle(colnames(dat[-1]),
+                  backgroundColor = styleEqual(principalesPalabras$palabra,
+                  palette(rainbow(12)))
+                  )
+    
+    return(tabla)
+  })
+  
+  # Tabla comparativa de Palabras
+  output$tablaComparativaPalabras <- renderTable({
+   datosCandidatos %>%
+      select(from_name, message) %>%
+      unnest_tokens(palabra, message) %>%
+      filter(!(palabra %in% stopWords)) %>%
+      filter(!(is.na(palabra))) %>%
+      group_by(from_name) %>%
+      count(palabra) %>%
+      arrange(from_name, desc(n)) %>% 
+      slice(1:15) %>%
+      mutate(ranking = row_number()) %>%
+      select(from_name, palabra, ranking) %>% 
+      tidyr::spread(from_name, palabra)
+  })
 }
 
 shinyApp(ui, server)
