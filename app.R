@@ -9,6 +9,7 @@ library(readr)
 library(lubridate)
 library(DT)
 library(RColorBrewer)
+library(stringr)
 
 # Carga de datos Global: Esto corre una vez al iniciar la aplicacion
 CargarDatos <- function(){
@@ -18,7 +19,22 @@ CargarDatos <- function(){
   data
 }
 
+CargarComentarios <- function(){
+  idCandidatos <- read_csv("./data/candidatos.csv")
+  colnames(idCandidatos) <- c("from_id_candidato", "from_name_candidato")
+  
+  dataComments <- dir(".", pattern = "comments.csv", recursive = TRUE) %>%
+    map(read_csv) %>%
+    reduce(rbind) %>%
+    mutate(from_id_candidato = str_split(dataComments$post_id, "_", simplify = TRUE)[,1])
+  
+  dataComments <- merge(dataComments, idCandidatos, by.x = "from_id_candidato", by.y = "from_id_candidato")
+  dataComments
+}
+
 datosCandidatos <- CargarDatos()
+datosComentarios <- CargarComentarios()
+
 stopWords <- scan("http://www.webmining.cl/wp-content/uploads/2011/03/stopwords.es.txt", character())
 stopWords <- c(stopWords, c("san", "<NA>","http"))
 
@@ -27,7 +43,8 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Candidatos", tabName = "candidatos", icon = icon("users")),
-      menuItem("Discursos", tabName = "discurso", icon = icon("table"))
+      menuItem("Discursos", tabName = "discurso", icon = icon("table")),
+      menuItem("Audiencias", tabName = "audiencias", icon = icon("table"))
     )
   ),
   dashboardBody(
@@ -55,7 +72,15 @@ ui <- dashboardPage(
         fluidRow(
           box(tableOutput("tablaComparativaPalabras"), width = 12, title = "Palabras más usadas por los Candidatos")
         )
+      ),
+      tabItem(tabName = "audiencias",
+        fluidRow(
+          box(tableOutput("tablaAudiencias"), width = 12, title = "Resumen de las Audiencias")
+        ),
+        fluidRow(
+          box(tableOutput("tablaPalabrasAudiencias"), width = 12, title = "Palabras más usadas por las audiencias de los Candidatos")
       )
+     )
     )
   )
 )
@@ -182,6 +207,35 @@ server <- function(input, output) {
       mutate(ranking = row_number()) %>%
       select(from_name, palabra, ranking) %>% 
       tidyr::spread(from_name, palabra)
+  })
+  
+  # Tabla Resumen Auiencias
+  output$tablaAudiencias <- renderTable({
+      metricasBasicas <- datosCandidatos %>%
+        select(from_name, likes_count, comments_count, shares_count) %>%
+        group_by(from_name) %>% 
+        summarise(
+          total_likes = sum(likes_count),
+          total_comments = sum(comments_count),
+          total_shares = sum(shares_count),
+          comments_vs_likes = total_comments / total_likes
+        )
+  })
+  
+  # Tabla comparativa de Palabras Audiencias
+  output$tablaPalabrasAudiencias <- renderTable({
+    datosComentarios %>%
+      select(from_name_candidato, message) %>%
+      unnest_tokens(palabra, message) %>%
+      filter(!(palabra %in% stopWords)) %>%
+      filter(!(is.na(palabra))) %>%
+      group_by(from_name_candidato) %>%
+      count(palabra) %>%
+      arrange(from_name_candidato, desc(n)) %>% 
+      slice(1:15) %>%
+      mutate(ranking = row_number()) %>%
+      select(from_name_candidato, palabra, ranking) %>% 
+      tidyr::spread(from_name_candidato, palabra)
   })
 }
 
