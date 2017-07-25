@@ -1,10 +1,14 @@
 # TODO: Hay una discrepancia del 1% entre los likes que traen el post y la lista de Likes individuales de getPosts. Ejemplo: "148528951956339_917191005090126"
 library(Rfacebook)
+library(stringr)
+library(purrr)
+library(dplyr)
 
 # Token temporal que caduca cada 1 hora. TODO: Automatizar token
-fbToken <- "EAACEdEose0cBAOyFoWvxuCnFPxAT3FjxX7FJrALiIFTAV3zN77ZBqhLdxQgmNLKKZBw7q8rAa8dieuKJhaLZA57sMBgT6ZAjJqe6A9ZCARqXHNLaDle9HLQ4zhYB2PQnTQDoLrQDeFk7YItelmGkcYpDAXnnAlKZCsGQlZAZB8Err8HWopFdlDEN3Ph5xHGXa3EZD"
+fbToken <- "EAACEdEose0cBAOrCVnWMp6iZBNlYdMKD0ZBbR2szXB8AUzuOMFZA76cRs6NYtzByt1D7cCZCb9JGKb6BF1casKeQVRHPF9YCxKihsQQh5msqaRxAXLgSmQ1QKCjgoGeDmtm4Iz9SleOAyKtwOqVcb29gkvnfILvcaPlBfUZC2Dialxm6DSa9a1cZCacWnHlhMZD"
 
 # Funcion para extraer comments, likes y posts de la lista que traer getPost.
+# TODO: safe_ExtraerElementos
 ExtraerElementos <- function(index, listaPosts, elemento){
   tmpData <- as.data.frame(listaPosts[index][[1]][elemento])
   colnames(tmpData) <- str_split_fixed(colnames(tmpData),"\\.",2)[,2]
