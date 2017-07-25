@@ -1,9 +1,12 @@
+## app.R ##
 library(shiny)
+library(shinydashboard)
 library(dplyr)
 library(ggplot2)
 library(tidytext)
 library(purrr)
 library(readr)
+
 
 # Carga de datos Global: Esto corre una vez al iniciar la aplicacion
 CargarDatos <- function(){
@@ -17,51 +20,92 @@ datosCandidatos <- CargarDatos()
 stopWords <- scan("http://www.webmining.cl/wp-content/uploads/2011/03/stopwords.es.txt", character())
 stopWords <- c(stopWords, c("san", "<NA>"))
 
+ui <- dashboardPage(
+  dashboardHeader(title = "Candidatos Córdoba 2017"),
+  dashboardSidebar(disable = TRUE),
+  dashboardBody(
+    fluidRow(
+      box(dateRangeInput("inputFechas", label="Fechas Posts:" ,start=min(datosCandidatos$created_time), end=max(datosCandidatos$created_time)), width = 3),
+      valueBoxOutput("likesValueBox", width = 3),
+      valueBoxOutput("commentsValueBox", width = 3),
+      valueBoxOutput("sharesValueBox", width = 3)
+      
+    ),
+    fluidRow(
+      box(radioButtons(inputId = "candidato", "Canidato:", choices = unique(datosCandidatos$from_name)), width = 2),
+      box(plotOutput("likes"), width = 7, title = "Historial de Likes del Candidato"),
+      box(tableOutput("rankingPalabras"), width = 3, title = "Palabra mas Usada")
+    ),
+    fluidRow(
+      box(dataTableOutput("postsCandidato"), width = 12, title = "Post del Candidato")
+    )
+  )
+)
 
-# UI
-ui <- fluidPage(titlePanel("Likes Historicos de los Candidatos"),
-                dateRangeInput('dateRange',
-                               label = 'Rango de Fechas a Visualizar',
-                               start = min(datosCandidatos$created_time), 
-                               end = max(datosCandidatos$created_time)
-                ),
-                plotOutput("likes"),
-                titlePanel("Ranking de palabras más usadas por los Candiatos"),
-                tableOutput("rankingPalabras"))
-
-# SERVER
-server <- function(input, output){
+server <- function(input, output) {
+  # Info Boxes
+  output$likesValueBox <- renderValueBox({
+    likes <- datosCandidatos %>% 
+      filter(from_name == input$candidato) %>%
+      summarise(total = sum(likes_count)) %>%
+      select(total)
+    valueBox(likes$total, "Likes", icon = icon("thumbs-up"), color = "blue")
+  })
+  
+  output$commentsValueBox <- renderValueBox({
+    comments <- datosCandidatos %>% 
+      filter(from_name == input$candidato) %>%
+      summarise(total = sum(comments_count)) %>%
+      select(total)
+    valueBox(comments$total, "Comments", icon = icon("comments"), color = "green")
+  })
+  
+  output$sharesValueBox <- renderValueBox({
+    shares <- datosCandidatos %>% 
+      filter(from_name == input$candidato) %>%
+      summarise(total = sum(shares_count)) %>%
+      select(total)
+    valueBox(shares$total, "Shares", icon = icon("share"), color = "maroon")
+  })
+  
   # Gráfico de Likes  
   dataLikes <- reactive({
     datosCandidatos %>% 
-      filter(created_time > as.POSIXct(input$dateRange[1]), 
-             created_time < as.POSIXct(input$dateRange[2]))
+      filter(from_name == input$candidato)
   })
+
   output$likes <- renderPlot({
-    ggplot(dataLikes(), aes(x=created_time, y=likes_count, color=from_name)) + 
+    ggplot(dataLikes(), aes(x=created_time, y=likes_count)) + 
       geom_line() +
+      geom_smooth() +
       labs(y =  "Cantidad de Likes", 
-           x =  "Fecha",
-           title = "Historial de Likes de los Candidatos",
-           subtitle = "Datos extraidos de los perfiles públicos de los candidatos.") +
+           x =  "Fecha") +
       theme_minimal()
   })
   
   # Tabla de Palabras
   output$rankingPalabras <- renderTable({
-    datosCandidatos %>% 
-      select(from_name, message) %>%
+    datosCandidatos %>%
+      filter(from_name == input$candidato) %>% 
+      select(message) %>%
       unnest_tokens(palabra, message) %>%
       filter(!(palabra %in% stopWords)) %>%
       filter(!(is.na(palabra))) %>%
-      group_by(from_name) %>%
-      count(palabra) %>%
-      arrange(from_name, desc(n)) %>%
-      slice(1:15) %>%
-      mutate(ranking = row_number()) %>%
-      select(from_name, palabra, ranking) %>%
-      tidyr::spread(from_name, palabra)
+      count(palabra, sort=TRUE) %>%
+      slice(1:12) %>%
+      mutate(ranking = row_number()) %>% 
+      select(ranking, palabra)
   })
+  
+  output$postsCandidato <- renderDataTable({
+    datosCandidatos %>%
+      filter(from_name == input$candidato) %>%
+      mutate(linkHTML = paste0("<a href=",link,">Link</a>")) %>%
+      arrange(desc(likes_count)) %>%
+      select(from_name, created_time, message, likes_count, comments_count, shares_count, linkHTML)
+  },
+  options = list(lengthMenu = c(5, 10), pageLength = 5), escape = FALSE
+  )
 }
 
-shinyApp(ui = ui, server = server)
+shinyApp(ui, server)
