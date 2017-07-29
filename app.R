@@ -1,38 +1,13 @@
 ## app.R ##
 library(shiny)
 library(shinydashboard)
-library(dplyr)
-library(ggplot2)
 library(tidytext)
-library(purrr)
-library(readr)
-library(lubridate)
 library(DT)
 library(RColorBrewer)
-library(stringr)
+source("utils.R")
 
 # Carga de datos Global: Esto corre una vez al iniciar la aplicacion
-CargarDatos <- function(){
-  data <- dir(".", pattern = "posts.csv", recursive = TRUE) %>%
-    map(read_csv) %>%
-    reduce(rbind)
-  data
-}
-
-CargarComentarios <- function(){
-  idCandidatos <- read_csv("./data/candidatos.csv")
-  colnames(idCandidatos) <- c("from_id_candidato", "from_name_candidato")
-  
-  dataComments <- dir(".", pattern = "comments.csv", recursive = TRUE) %>%
-    map(read_csv) %>%
-    reduce(rbind) %>%
-    mutate(from_id_candidato = str_split(dataComments$post_id, "_", simplify = TRUE)[,1])
-  
-  dataComments <- merge(dataComments, idCandidatos, by.x = "from_id_candidato", by.y = "from_id_candidato")
-  dataComments
-}
-
-datosCandidatos <- CargarDatos()
+datosCandidatos <- CargarPosts()
 datosComentarios <- CargarComentarios()
 
 stopWords <- scan("http://www.webmining.cl/wp-content/uploads/2011/03/stopwords.es.txt", character())
